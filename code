@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tradewater Channel Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: header + type×status matrix (the "map") on top, filterable channel ledger below. Status colors borrow refrigerant-cylinder coding. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#15211e; --muted:#5b6b66; --line:#d6dedb;
+  --accent:#0f6b5c; --accent-soft:#dcefea;
+  --partner:#1f7a4d; --partner-bg:#e1f3e8;
+  --comp:#a35a0c; --comp-bg:#fbeedd;
+  --open:#3b5ba8; --open-bg:#e4eaf8;
+  --display:"Archivo",system-ui,sans-serif; --body:"Source Sans 3",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1614; --surface:#17211e; --ink:#e4ece9; --muted:#97a8a2; --line:#2a3834;
+  --accent:#4fc2a9; --accent-soft:#163a33;
+  --partner:#6fd39c; --partner-bg:#16362a; --comp:#f0aa5c; --comp-bg:#3a2a15; --open:#93acf0; --open-bg:#1d2747; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1614; --surface:#17211e; --ink:#e4ece9; --muted:#97a8a2; --line:#2a3834;
+  --accent:#4fc2a9; --accent-soft:#163a33;
+  --partner:#6fd39c; --partner-bg:#16362a; --comp:#f0aa5c; --comp-bg:#3a2a15; --open:#93acf0; --open-bg:#1d2747; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+header{display:grid;gap:8px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,5vw,40px);line-height:1.05;margin:0;text-wrap:balance}
+.lede{color:var(--muted);max-width:68ch;margin:0}
+h2{font-family:var(--display);font-size:18px;margin:0 0 10px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-partner{color:var(--partner);background:var(--partner-bg)}
+.s-comp{color:var(--comp);background:var(--comp-bg)}
+.s-open{color:var(--open);background:var(--open-bg)}
+.matrix-box{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px}
+th,td{border-bottom:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+th{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.type{font-weight:600;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:2px 8px;cursor:pointer}
+.chip:hover,.chip:focus-visible{border-color:var(--accent);outline:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:5px 10px;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.seg button:focus-visible,.btn:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--accent);color:var(--accent);background:transparent;padding:5px 12px;border-radius:6px;cursor:pointer;margin-left:auto}
+.count{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.ledger{display:grid;gap:10px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.row summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:14px 16px;align-items:center}
+.row summary::-webkit-details-marker{display:none}
+.row summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:8px}
+.name{font-family:var(--display);font-weight:700;font-size:16.5px}
+.meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:13px;color:var(--muted)}
+.lines{font-family:var(--mono);font-size:11.5px}
+.fit{display:flex;gap:3px;align-items:center}
+.fit i{width:9px;height:9px;border-radius:2px;background:var(--line)}
+.fit i.on{background:var(--accent)}
+.body{padding:0 16px 16px;display:grid;gap:12px;border-top:1px solid var(--line);padding-top:14px;min-width:0}
+.body dl{margin:0;display:grid;grid-template-columns:110px 1fr;gap:8px 14px}
+.body dt{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-top:2px}
+.body dd{margin:0;min-width:0}
+.src a{color:var(--accent);word-break:break-word}
+.stage{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+select{font:inherit;font-size:13px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+.note{font-size:13px;color:var(--muted);max-width:75ch}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px}
+@media (max-width:560px){.body dl{grid-template-columns:1fr}.body dt{padding-top:0}.btn{margin-left:0}}
+@media (prefers-reduced-motion:no-preference){.row[open] .body{animation:in .18s ease-out}@keyframes in{from{opacity:.4}to{opacity:1}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">GTM · Channel &amp; broker map · Oct 2026</div>
+    <h1>Tradewater Channel Map</h1>
+    <p class="lede">Who else can sell Tradewater's refrigerant (ODS) and orphaned-well methane credits. Tradewater already sells direct and through brokers as needed; this maps the intermediaries, where Tradewater already sits, and where the open lanes are.</p>
+    <div class="legend">
+      <span class="pill s-partner">Partner</span><span>existing Tradewater relationship</span>
+      <span class="pill s-comp">Competitor-supplied</span><span>carries refrigerant or well credits from someone else</span>
+      <span class="pill s-open">Open lane</span><span>relevant reach, no evidence of these credits yet</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>The map</h2>
+    <div class="matrix-box"><table id="matrix"></table></div>
+  </section>
+
+  <section>
+    <h2>Channel ledger</h2>
+    <div class="controls">
+      <div class="seg" id="f-status" role="group" aria-label="Filter by status"></div>
+      <div class="seg" id="f-line" role="group" aria-label="Filter by credit line"></div>
+      <button class="btn" id="copy">Copy as CSV</button>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="ledger" id="ledger"></div>
+  </section>
+
+  <p class="note">Fit scores (1–5) are a first-pass judgment on buyer reach, product fit and ease of entry, not data. Outreach stage saves in this browser only. Verify CORSIA eligibility and current listings before outreach.</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const TYPES=["Sister company","Marketplace / API","Procurement platform","Broker / retailer","Consumer platform","Exchange","Wells offtaker","Recommender / standard","Convening"];
+const STATUS={partner:"Partner",comp:"Competitor-supplied",open:"Open lane"};
+const D=[
+{id:"rti",name:"RTI (Reclamation Technologies USA)",type:"Sister company",status:"partner",lines:["ODS"],fit:5,
+ what:"Refrigerant reclamation business combined with Tradewater under J.F. Lehman's new environmental services platform in 2026.",
+ evidence:"J.F. Lehman took a majority stake in Tradewater in Jan 2026 and paired it with RTI to form one platform.",
+ angle:"RTI's customer base is both a supply source (end-of-life refrigerant) and a warm buyer list for credits. Cheapest channel to activate.",
+ next:"Map overlap between RTI accounts and companies with net-zero targets; pilot a bundled reclaim + credit offer.",
+ src:[["ACG Indiana event","https://www.acg.org/node/153163"],["Preqin profile","https://www.preqin.com/data/profile/asset/tradewater--llc/787745"]]},
+{id:"cip",name:"Climate Impact Partners",type:"Broker / retailer",status:"comp",lines:["ODS","Wells"],fit:5,
+ what:"Long-standing carbon credit retailer that builds portfolios for large corporate clients.",
+ evidence:"Bought and retired ACR refrigerant credits from Therm on behalf of a client, at a premium to similar credits.",
+ angle:"Already sells the refrigerant story to corporates. Pitch Tradewater as deeper ODS supply plus a new methane line from wells.",
+ next:"Request a meeting with their sourcing team; bring vintages, volumes and ICVCM CCP-approved methodology status.",
+ src:[["Refindustry (Therm sale)","https://refindustry.com/?p=36039"]]},
+{id:"ceezer",name:"CEEZER",type:"Procurement platform",status:"open",lines:["ODS","Wells"],fit:5,
+ what:"Enterprise platform for planning, procuring and reporting carbon credit portfolios.",
+ evidence:"Since Jan 2026, Cloverly supplier inventory flows to CEEZER's enterprise buyers through an API partnership.",
+ angle:"Tradewater may already be reachable via Cloverly; a direct supplier profile gets it onto buyer shortlists and RfPs.",
+ next:"Check whether Tradewater inventory shows in CEEZER via Cloverly; apply through the supplier vetting process.",
+ src:[["CEEZER partners","https://www.ceezer.earth/partners"],["Cloverly partnership","https://simplify.jobs/c/CEEZER"]]},
+{id:"cloverly",name:"Cloverly",type:"Marketplace / API",status:"partner",lines:["ODS"],fit:4,
+ what:"API-first marketplace that lets other products embed carbon credits at checkout or in workflows.",
+ evidence:"Cloverly's dashboard lists a Tradewater HFC reclamation tranche.",
+ angle:"Existing listing. Add well credits and check that ODS destruction inventory is live, not only HFC reclamation.",
+ next:"Pull Cloverly sales data for Tradewater tranches; ask what share of demand now arrives via CEEZER.",
+ src:[["Cloverly tranche","https://dashboard-stag.cloverly.com/tranches/tradewater-hfc-reclamation-120-months-starting-12-2019-6dcaaf"],["Cloverly API","https://cloverly.com/api"]]},
+{id:"wren",name:"Wren",type:"Consumer platform",status:"comp",lines:["ODS"],fit:4,
+ what:"Subscription platform where individuals fund climate projects, including refrigerant destruction.",
+ evidence:"Funded an A-Gas HCFC-22 destruction project for its subscribers; says it is often a project's sole buyer.",
+ angle:"Offer a dedicated, storytelling-ready project (a specific stockpile or a single plugged well) Wren can own.",
+ next:"Pitch a named project with photos and chain-of-custody data for subscriber updates.",
+ src:[["A-Gas × Wren","https://www.newswire.com/news/a-gas-delivers-hcfc-22-destruction-generated-carbon-offsets-to-wren-22055448"]]},
+{id:"terraset",name:"Terraset",type:"Consumer platform",status:"comp",lines:["ODS"],fit:4,
+ what:"Climate funding platform that buys credits from high-integrity projects.",
+ evidence:"Named by Recoolit as one of the platforms buying its refrigerant credits.",
+ angle:"Already sold on refrigerant destruction; Tradewater offers larger volume and US/ACR credits next to Recoolit's Indonesia supply.",
+ next:"Intro email positioning Tradewater as complementary supply, not a replacement.",
+ src:[["Recoolit buyers","https://dotcom-4n2.pages.dev/our-work"]]},
+{id:"usventure",name:"U.S. Venture (U.S. Energy)",type:"Wells offtaker",status:"comp",lines:["Wells"],fit:4,
+ what:"Energy company that acquired orphan-well credits and says it is positioned to connect them with buyers.",
+ evidence:"Took Crbon Labs' credits from Canada's first plugged orphan gas well under ACR methodology (2025).",
+ angle:"A natural offtaker for the Carbon Shield pipeline in Colorado and Wyoming.",
+ next:"Pitch forward offtake on Rocky Mountain wells from the Carbon Shield acquisition.",
+ src:[["World Oil (Crbon Labs)","https://www.worldoil.com/news/2025/4/24/crbon-labs-plugs-canada-s-first-orphan-gas-well-u-s-venture-acquires-carbon-credits/"],["Carbon Shield deal","https://worldoil.com/news/2026/7/15/tradewater-acquires-carbon-shield-to-expand-orphaned-well-methane-projects/"]]},
+{id:"givinggreen",name:"Giving Green",type:"Recommender / standard",status:"partner",lines:["ODS"],fit:4,
+ what:"Climate giving research group whose recommendations steer individual and small-business offset buyers.",
+ evidence:"Recommends Tradewater as its refrigerant destruction pick.",
+ angle:"Not a seller, but a lead source. Use the endorsement in every pitch and ask for a review of the wells program.",
+ next:"Request an updated review covering orphaned-well credits.",
+ src:[["Giving Green refrigerants","https://givinggreen.earth/carbon-offsets-research/refrigerants"]]},
+{id:"commons",name:"Commons",type:"Consumer platform",status:"partner",lines:["ODS"],fit:3,
+ what:"Consumer app with a carbon-neutral subscription backed by a diversified offset portfolio.",
+ evidence:"Its offset portfolio includes Tradewater's Thailand refrigerant project.",
+ angle:"Renew and expand; add a domestic well project for US subscribers.",
+ next:"Check renewal timing and propose the wells line for the next portfolio refresh.",
+ src:[["Commons portfolio","https://thecommons.earth/blog/offset-portfolio-tradewater"]]},
+{id:"requis",name:"Requis",type:"Procurement platform",status:"partner",lines:["ODS"],fit:3,
+ what:"Supply-chain procurement platform that added carbon credits into its purchasing flow.",
+ evidence:"Named Tradewater its first carbon credit partner.",
+ angle:"Credits sit inside procurement workflows, which suits repeat B2B buyers. Confirm the partnership is still active.",
+ next:"Ask for transaction volume since launch before investing more time.",
+ src:[["AJOT announcement","https://ajot.com/news/requis-partners-with-tradewater-to-offer-high-quality-carbon-offset-credits"]]},
+{id:"cbl",name:"Xpansiv CBL",type:"Exchange",status:"open",lines:["ODS"],fit:3,
+ what:"Large spot exchange for environmental commodities, running the CORSIA-tracking GEO contract.",
+ evidence:"Its Aviation Carbon Exchange with IATA trades CORSIA-eligible units from programs including ACR and CAR.",
+ angle:"Airline demand and price discovery, only if specific Tradewater vintages qualify as CORSIA-eligible.",
+ next:"Verify CORSIA eligibility of Tradewater ACR issuances before any listing work.",
+ src:[["Xpansiv products","https://xpansiv.com/?p=117"]]},
+{id:"oneshot",name:"oneshot.earth",type:"Recommender / standard",status:"partner",lines:["Wells"],fit:3,
+ what:"Partner on a more conservative orphaned-well crediting methodology.",
+ evidence:"Tradewater announced it is developing a methodology with oneshot.earth (2025).",
+ angle:"Co-market the methodology to integrity-focused buyers as the differentiator for Tradewater well credits.",
+ next:"Draft a joint one-pager on what makes the methodology stricter.",
+ src:[["Methodology announcement","https://www.pollutiononline.com/doc/tradewater-announces-it-is-developing-industry-leading-methodology-oneshot-earth-0001"]]},
+{id:"rmi",name:"RMI super-pollutant convenings",type:"Convening",status:"open",lines:["ODS","Wells"],fit:3,
+ what:"Events where buyers, marketplaces, brokers and developers meet on super-pollutant credits.",
+ evidence:"RMI, BCarbon, oneshot.earth and ACR co-hosted a Climate Week NYC gathering on these credits in Sept 2026.",
+ angle:"One room with many channels. Get Tradewater on the host or speaker list for the next one.",
+ next:"Ask oneshot.earth for an intro to RMI's organizers.",
+ src:[["RMI event","https://rmi.org/events/happy-hour-event-the-super-pollutants-in-your-backyard/"]]}
+];
+
+let fStatus="all", fLine="all";
+const KEY="twcm-stage";
+let stages={}; try{stages=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){stages={}}
+const STAGES=["Not started","Researching","Contacted","In talks","Live"];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function matrix(){
+  const used=TYPES.filter(t=>D.some(d=>d.type===t));
+  let h="<thead><tr><th>Channel type</th>"+Object.keys(STATUS).map(k=>`<th><span class="pill s-${k}">${STATUS[k]}</span></th>`).join("")+"</tr></thead><tbody>";
+  used.forEach(t=>{h+=`<tr><td class="type">${t}</td>`+Object.keys(STATUS).map(k=>`<td><div class="chips">${D.filter(d=>d.type===t&&d.status===k).map(d=>`<button class="chip" data-go="${d.id}">${esc(d.name.split(" (")[0])}</button>`).join("")}</div></td>`).join("")+"</tr>"});
+  document.getElementById("matrix").innerHTML=h+"</tbody>";
+}
+function segs(){
+  const s=document.getElementById("f-status");
+  s.innerHTML=[["all","All"],...Object.entries(STATUS)].map(([k,v])=>`<button data-s="${k}" aria-pressed="${fStatus===k}">${v}</button>`).join("");
+  const l=document.getElementById("f-line");
+  l.innerHTML=[["all","All credits"],["ODS","Refrigerant"],["Wells","Orphan wells"]].map(([k,v])=>`<button data-l="${k}" aria-pressed="${fLine===k}">${v}</button>`).join("");
+}
+function rows(){
+  const list=D.filter(d=>(fStatus==="all"||d.status===fStatus)&&(fLine==="all"||d.lines.includes(fLine))).sort((a,b)=>b.fit-a.fit);
+  document.getElementById("count").textContent=`${list.length} of ${D.length} channels, sorted by fit`;
+  document.getElementById("ledger").innerHTML=list.map(d=>`
+  <details class="row" id="c-${d.id}">
+    <summary><span class="name">${esc(d.name)}</span><span class="pill s-${d.status}">${STATUS[d.status]}</span>
+      <span class="meta"><span>${d.type}</span><span class="lines">${d.lines.map(x=>x==="ODS"?"Refrigerant":"Orphan wells").join(" · ")}</span>
+      <span class="fit" aria-label="Fit ${d.fit} of 5">${[1,2,3,4,5].map(i=>`<i class="${i<=d.fit?"on":""}"></i>`).join("")}</span></span></summary>
+    <div class="body"><dl>
+      <dt>What they do</dt><dd>${esc(d.what)}</dd>
+      <dt>Evidence</dt><dd>${esc(d.evidence)}</dd>
+      <dt>Angle</dt><dd>${esc(d.angle)}</dd>
+      <dt>Next step</dt><dd>${esc(d.next)}</dd>
+      <dt>Sources</dt><dd class="src">${d.src.map(([t,u])=>`<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>`).join(" · ")}</dd>
+    </dl>
+    <label class="stage" for="st-${d.id}">Outreach stage
+      <select id="st-${d.id}" data-id="${d.id}">${STAGES.map(s=>`<option ${stages[d.id]===s?"selected":""}>${s}</option>`).join("")}</select></label>
+    </div></details>`).join("");
+}
+function render(){segs();rows()}
+document.addEventListener("click",e=>{
+  const s=e.target.closest("[data-s]"),l=e.target.closest("[data-l]"),g=e.target.closest("[data-go]");
+  if(s){fStatus=s.dataset.s;render()}
+  if(l){fLine=l.dataset.l;render()}
+  if(g){fStatus="all";fLine="all";render();const el=document.getElementById("c-"+g.dataset.go);el.open=true;el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})}
+});
+document.addEventListener("change",e=>{if(e.target.dataset.id){stages[e.target.dataset.id]=e.target.value;try{localStorage.setItem(KEY,JSON.stringify(stages))}catch(_){}}});
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,2200)}
+document.getElementById("copy").addEventListener("click",()=>{
+  const q=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const csv=["Channel,Type,Status,Credit lines,Fit,Angle,Next step,Outreach stage",...D.map(d=>[d.name,d.type,STATUS[d.status],d.lines.join("/"),d.fit,d.angle,d.next,stages[d.id]||"Not started"].map(q).join(","))].join("\n");
+  navigator.clipboard.writeText(csv).then(()=>toast("Copied CSV for all channels")).catch(()=>toast("Copy blocked here. Try the desktop browser."));
+});
+matrix();render();
+</script>
+</body>
+</html>
